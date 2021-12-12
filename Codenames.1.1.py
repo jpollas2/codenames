@@ -4,7 +4,7 @@
 #   (use https://pip.pypa.io/en/stable/installing/ for installation/download)
 #wxPython installed (use https://wxpython.org for help and download)
 
-#on click of board button, reduce clue number
+#add a timer
 
 import requests
 import wx
@@ -13,27 +13,15 @@ import csv
 import operator
 import os
 from os import getcwd
+import pandas as pd
 
 #get words from internet
 #use csv file of words from online
 url="https://raw.githubusercontent.com/jpollas2/codenames/master/CodenameWords.csv"
 
-#create a file where the words will go
-direct=getcwd()
-fname=os.path.join(direct,'codenames.csv')
-#print the filename so one can delete after game if desired
-print(fname)
-r=requests.get(url)
-
-#write data from online to the file
-f=open(fname,'w')
-f.write(r.content)
-f.close()
-
-#read csv file containing all words
-with open(fname,'r') as w:
-    reader=csv.reader(w)
-    words=list(reader)
+#create list of words (unedited) from csv
+words_table = pd.read_csv(url, header=None);
+words = words_table[0].to_list()
 
 '''
 #get words from desktop file if no internet connection and have file on
@@ -42,10 +30,9 @@ with open("/Users/jpollas2/Desktop/CodenameWords.csv",'r') as w:
     words=list(reader)
 '''
 
-#create list of words from csv
+#create list of words (edited and cleaned)
 WordList=[]
-for i in words:
-    word=i[0]
+for word in words:
     word2=word.upper()
     WordList.append(word2.strip())
 
@@ -78,8 +65,7 @@ def startGame():
     #forBoard is unshuffled and used for the gameboard
     #together is shuffled and used for the clue givers
     forBoard=zip(NeededList,words)
-    together=zip(NeededList,words)
-    together.sort()
+    together=sorted(zip(NeededList,words))
 
     #get lists for each team and their words
     if rValue > 0.5:
@@ -186,54 +172,11 @@ class board(wx.Frame):
    #adds every word as a button from the list words
     def InitUI(self):
         p = wx.Panel(self)
-        #gsmain=wx.GridSizer(1,1,0,0)
-        #gsmain=wx.GridSizer(2,1,0,0)
-        '''
-        gsclue=wx.GridSizer(1,2,0,0)
-        self.t1=wx.StaticText(p,-1, label="Clue", style = wx.ALIGN_CENTER)
-        gsclue.Add(self.t1)
-        p.SetSizer(gsmain)
-        self.t2=wx.StaticText(p,-1,label="Number",style=wx.ALIGN_CENTER)
-        gsclue.Add(self.t2)
-        p.SetSizer(gsmain)
-        '''
-        main = wx.GridSizer(2, 1, 0, 0)
-        
-        #keeps track of score above the words
-        scoreboard = wx.GridSizer(2, 2, 5, 5)
-        
-        redlab=wx.StaticText(p,-1, style = wx.ALIGN_CENTER)
-        redlab.SetLabel("Red")
-        redlab.SetForegroundColour("Red")
-
-        redscore = wx.StaticText(p, -1, style = wx.ALIGN_CENTER)
-        redscore.SetLabel("9")
-
-        bluelab = wx.StaticText(p, -1, style = wx.ALIGN_CENTER)
-        bluelab.SetLabel("Blue")
-        bluelab.SetForegroundColour("Blue")
-
-        bluescore = wx.StaticText(p, -1, style = wx.ALIGN_CENTER)
-        bluescore.SetLabel("8")
-
-        scoreboard.Add(redlab)
-        scoreboard.Add(redscore)
-        scoreboard.Add(bluelab)
-        scoreboard.Add(bluescore)
-        p.SetSizer(main)
-        
-        
-        #5 by 5 grid of the words
-        gs = wx.GridSizer(5, 5, 5, 5)
+        gsmain=wx.GridSizer(5, 5, 5, 5)
+    
         for w in self.l:
-            gs.Add(WordButton(p,label=w[1],size=(20,20),color=w[0]),0,wx.EXPAND)
-            p.SetSizer(main)   
-        p.SetSizer(main)
-
-        #adding to main grid sizer
-        main.Add(scoreboard)
-        main.Add(gs)
-        p.SetSizer(main)
+            gsmain.Add(WordButton(p,label=w[1],size=(20,20),color=w[0]),0,wx.EXPAND)
+            p.SetSizer(gsmain)
  
 #creates frame for the clue givers
 #will show which words belong to which team as buttons
@@ -306,7 +249,7 @@ class cluers(wx.Frame):
            p.SetSizer(gsmain)
         
         #adds a start button to the clue givers board
-        gss=wx.GridSizer(4,1,5,5)
+        gss=wx.GridSizer(3,1,5,5)
         nada=wx.StaticText(p,-1)
         nada.SetLabel("")
         gss.Add(nada)
@@ -314,9 +257,6 @@ class cluers(wx.Frame):
         p.SetSizer(gsmain)
         gss.Add(ExitButton(p,label="Exit Game",size=(20,20)),0,wx.EXPAND)
         p.SetSizer(gsmain)
-        GCB=wx.Button(p,label="Give Clue",size=(20,20))
-        GCB.Bind(wx.EVT_BUTTON,self.giveClue)
-        gss.Add(GCB,0,wx.EXPAND)
         p.SetSizer(gsmain)
         
         #adds the 5 previous panels to the original panel made so it shows
@@ -326,19 +266,7 @@ class cluers(wx.Frame):
         gsmain.Add(gsa)
         gsmain.Add(gsc)
         gsmain.Add(gss)
-        p.SetSizer(gsmain)
-
-    def giveClue(self,event):
-        cl=wx.TextEntryDialog(parent=self,message="What's your clue?",defaultValue='')
-        cl.ShowModal()
-        num=wx.TextEntryDialog(parent=self,message="How many words?",defaultValue='')
-        num.ShowModal()
-        result=cl.GetValue()
-        result2=num.GetValue()
-        cl.Destroy()
-        num.Destroy()
-        self.board.t1.SetLabel(result)
-        self.board.t2.SetLabel(result2)        
+        p.SetSizer(gsmain)       
         
         
 
@@ -350,7 +278,3 @@ dc=(236,236,236,255)
 #a=board(parent=None,title="Codenames",words=game[0])
 b=cluers(parent=None,r=game[2],b=game[3],c=game[5],a=game[4],board=board(parent=None,title="Codenames",words=game[0]))
 app.MainLoop()
-
-
-
-
